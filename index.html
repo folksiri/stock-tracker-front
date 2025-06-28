@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>📈 Stock Tracker</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8f8f8; padding: 2em; }
+    h1 { color: #333; }
+    table { border-collapse: collapse; width: 100%; background: #fff; box-shadow: 0 0 8px #ccc; margin-top: 1em; }
+    th, td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
+    th { background: #f0f0f0; }
+    .buy { background: #d4fcd4; color: green; font-weight: bold; }
+    .wait { background: #fff9cc; color: #555; font-weight: bold; }
+    .sell { background: #ffd6d6; color: red; font-weight: bold; }
+    .nodata { background: #eee; color: #999; }
+    #refresh { margin-top: 1em; padding: 0.6em 1.2em; font-size: 1em; }
+    #timestamp { font-style: italic; margin-top: 1em; color: #666; }
+  </style>
+</head>
+<body>
+  <h1>📊 Stock Watchlist</h1>
+  <button id="refresh">🔄 Refresh</button>
+  <div id="timestamp"></div>
+  <table id="stock-table">
+    <thead>
+      <tr>
+        <th>Ticker</th>
+        <th>Current Price</th>
+        <th>Target Price</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script>
+    const FUNCTION_URL = 'https://us-central1-stock-tracker-464119.cloudfunctions.net/stock_check'; // Replace with your real URL
+
+    function parseLine(line) {
+      const match = line.match(/^(\w+): \$([\d.]+) \(Target: \$([\d.]+)\) → (.+)$/);
+      if (!match) return null;
+      return {
+        ticker: match[1],
+        current: match[2],
+        target: match[3],
+        status: match[4]
+      };
+    }
+
+    async function loadStockData() {
+      const tbody = document.querySelector("#stock-table tbody");
+      tbody.innerHTML = "";
+      const timestamp = document.getElementById("timestamp");
+      timestamp.textContent = "Loading...";
+
+      try {
+        const res = await fetch(FUNCTION_URL);
+        const text = await res.text();
+        const lines = text.trim().split("\n");
+
+        if (lines.length > 0 && lines[0].includes("Stock Check")) {
+          timestamp.textContent = lines.shift();
+        }
+
+        for (const line of lines) {
+          if (line.includes("❌ No data")) {
+            const ticker = line.split(":")[0];
+            tbody.innerHTML += `<tr><td>${ticker}</td><td colspan="3" class="nodata">No data available</td></tr>`;
+            continue;
+          }
+
+          const parsed = parseLine(line);
+          if (!parsed) continue;
+
+          const statusClass = parsed.status.includes("BUY") ? "buy" :
+                              parsed.status.includes("WAIT") ? "wait" :
+                              parsed.status.includes("SELL") ? "sell" : "";
+
+          tbody.innerHTML += `
+            <tr>
+              <td>${parsed.ticker}</td>
+              <td>$${parsed.current}</td>
+              <td>$${parsed.target}</td>
+              <td class="${statusClass}">${parsed.status}</td>
+            </tr>`;
+        }
+
+      } catch (err) {
+        timestamp.textContent = "⚠️ Failed to load: " + err.message;
+      }
+    }
+
+    document.getElementById("refresh").addEventListener("click", loadStockData);
+    loadStockData(); // auto-load on open
+  </script>
+</body>
+</html>
