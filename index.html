@@ -47,6 +47,24 @@
       };
     }
 
+    async function showDetails(ticker) {
+      const apiUrl = `https://us-central1-stock-tracker-464119.cloudfunctions.net/stock_detail?ticker=${ticker}`;
+      try {
+        const res = await fetch(apiUrl);
+        if (!res.ok) throw new Error("Network response was not ok");
+        const data = await res.json();
+
+        let message = `📊 Details for ${ticker}:\n\n`;
+        for (const [key, value] of Object.entries(data)) {
+          message += `${key}: ${value ?? "N/A"}\n`;
+        }
+
+        alert(message);
+      } catch (err) {
+        alert(`⚠️ Failed to load details: ${err.message}`);
+      }
+    }
+
     async function loadStockData() {
       const tbody = document.querySelector("#stock-table tbody");
       tbody.innerHTML = "";
@@ -78,7 +96,7 @@
 
           tbody.innerHTML += `
             <tr>
-              <td>${parsed.ticker}</td>
+              <td onclick="showDetails('${parsed.ticker}')" style="cursor:pointer; text-decoration:underline;">${parsed.ticker}</td>
               <td>$${parsed.current}</td>
               <td>$${parsed.target}</td>
               <td class="${statusClass}">${parsed.status}</td>
